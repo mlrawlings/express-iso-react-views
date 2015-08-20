@@ -1,0 +1,35 @@
+{
+  "name": "express-iso-react-views",
+  "version": "0.0.1",
+  "description": "This is an Express view engine which renders React components on server and allows mounting on the client.  Based on express-react-views by Paul O’Shannessy.",
+  "keywords": [
+    "express",
+    "view engine",
+    "react"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "node test"
+  },
+  "author": {
+    "name": "Michael Rawlings",
+    "email": "mlrawlings@embarkweb.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mlrawlings/express-iso-react-views.git"
+  },
+  "license": "BSD-3-Clause",
+  "peerDependencies": {
+    "react": "0.12 - 0.13"
+  },
+  "dependencies": {
+    "js-beautify": "^1.5.4",
+    "babel": "^5.1.13",
+    "object-assign": "^2.0.0"
+  },
+  "devDependencies": {
+    "react": "^0.13.2",
+    "async": "^0.9.0"
+  }
+}
