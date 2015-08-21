@@ -8,7 +8,6 @@
  */
 
 var React = require('react')
-var beautifyHTML = require('js-beautify').html
 var assign = require('object-assign')
 var fs = require('fs')
 var path = require('path')
