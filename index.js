@@ -7,9 +7,9 @@
  *  of patent rights can be found in the PATENTS file in the same directory.
  */
 
-var React = require('react');
-var beautifyHTML = require('js-beautify').html;
-var assign = require('object-assign');
+var React = require('react')
+var beautifyHTML = require('js-beautify').html
+var assign = require('object-assign')
 var fs = require('fs')
 var path = require('path')
 var webpack = require('webpack')
@@ -18,14 +18,30 @@ var DEFAULT_OPTIONS = {
   doctype: '<!DOCTYPE html>',
   beautify: false,
   transformViews: true,
-  root: path.join(__dirname, '../..')
-};
+  mountNode: '#app',
+  html: path.join(__dirname, './html.js'),
+  includeDefaultScripts: true,
+  includeDefaultStyles: true,
+  scripts:[],
+  styles:[]
+}
+
+var INCLUDED_SCRIPTS = [
+  'https://fb.me/react-0.13.3.js'
+]
+
+var INCLUDED_STYLES = [
+  'https://cdnjs.cloudflare.com/ajax/libs/normalize/3.0.3/normalize.min.css'
+]
 
 function init(engineOptions) {
   var registered = false;
   var moduleDetectRegEx;
 
   engineOptions = assign({}, DEFAULT_OPTIONS, engineOptions || {});
+
+  var styles = engineOptions.includeDefaultStyles ? INCLUDED_STYLES.concat(engineOptions.styles) : engineOptions.styles
+  var scripts = engineOptions.includeDefaultScripts ? INCLUDED_SCRIPTS.concat(engineOptions.scripts) : engineOptions.scripts
 
   function renderFile(filename, options, cb) {
     // Defer babel registration until the first request so we can grab the view path.
@@ -42,27 +58,34 @@ function init(engineOptions) {
     }
 
     try {
-      var markup = engineOptions.doctype;
-      var layout = require(path.resolve(filename, '..', options.layout || engineOptions.layout));
-      var component = require(filename);
+      var view = require(filename);
+      var html = require(path.resolve(options.settings.views, engineOptions.html));
+
       // Transpiled ES6 may export components as { default: Component }
-      component = component.default || component;
+      view = view.default || view;
+      html = html.default || html;
 
-      var componentMarkup = React.renderToString(React.createElement(component, options))
+      // Props are the options minus the settings
+      var viewProps = assign({}, options)
+      delete viewProps['settings']
+      delete viewProps['_locals']
+      
+      // Generate view markup (mountable client-side)
+      var viewMarkup = React.renderToString(React.createElement(view, viewProps))
+      
+      // htmlProps are the same as viewProps, but we also add the viewMarkup
+      var htmlProps = assign({}, viewProps, { viewMarkup:viewMarkup })
 
-      options.componentMarkup = componentMarkup
+      // Generate the code to mount the React component client side
+      var mountScripts = createMountScripts(path.relative(options.settings.views, filename), viewProps)
 
-      markup += React.renderToStaticMarkup(React.createElement(layout, options));
-      markup = markup.replace('</html>', createMount(filename, options) + '</html>');
+      // Generate the full html markup
+      var markup = engineOptions.doctype + React.renderToStaticMarkup(React.createElement(html, htmlProps));
+      markup = insertStyles(markup, styles)
+      markup = insertScripts(markup, scripts.concat(mountScripts))
     } catch (e) {
       return cb(e);
     }
-
-    /*if (engineOptions.beautify) {
-      // NOTE: This will screw up some things where whitespace is important, and be
-      // subtly different than prod.
-      markup = beautifyHTML(markup);
-    }*/
 
     if (options.settings.env === 'development') {
       // Remove all files from the module cache that are in the view folder.
@@ -76,9 +99,33 @@ function init(engineOptions) {
     cb(null, markup);
   }
 
-  function createMount(filename, options) {
-    return '<script src="/components'+filename.replace(engineOptions.root, '').replace(/\\/g,'/')+'"></script>' +
-    '<script>React.render(React.createElement(Component, '+JSON.stringify(options)+'), document.querySelector(\''+engineOptions.mountNode+'\'))</script>'
+  function createMountScripts(filename, props) {
+    return [
+      '/components/'+filename.replace(/\\/g,'/'),
+      '<script>React.render(React.createElement(Component, '+JSON.stringify(props)+'), document.querySelector(\''+engineOptions.mountNode+'\'))</script>'
+    ]
+  }
+
+  function insertStyles(html, styles) {
+    styles = styles.map(function(style) {
+      if(/^\<style/.test(style)) {
+        return style
+      }
+      return '<link rel="stylesheet" href="'+style+'" />'
+    }).join('')
+
+    return html.replace('</head>', styles + '</head>')
+  }
+
+  function insertScripts(html, scripts) {
+    scripts = scripts.map(function(script) {
+      if(/^\<script/.test(script)) {
+        return script
+      }
+      return '<script src="'+script+'"></script>'
+    }).join('')
+
+    return html.replace('</body>', scripts + '</body>')
   }
 
   function serveComponent(req, res, next) {
@@ -87,16 +134,17 @@ function init(engineOptions) {
       , inputFile
       , outputPath
       , outputFile
-    if(match = /^\/components\/(\w+\.js)/.exec(req.url)) {
+
+    if(match = /^\/components\/(.+\.jsx?)/.exec(req.url)) {
         filename = match[1]
-        inputFile = path.join(engineOptions.root, filename)
+        inputFile = path.join(req.app.get('views'), filename)
         outputPath = path.join(__dirname, 'components')
         outputFile = path.join(outputPath, filename)
 
         fs.stat(inputFile, function(err, inputStats) {
           if(err) next(err)
           fs.stat(outputFile, function(err, outputStats) {
-            if(err) createAndServe()
+            if(err) return createAndServe()
 
             if(inputStats.mtime > outputStats.mtime) {
               createAndServe()

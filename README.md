@@ -1,17 +1,16 @@
-# express-react-views
+# express-iso-react-views
 
-This is an [Express][express] view engine which renders [React][react] components on server. It renders static markup and *does not* support mounting those views on the client.
+This is an [Express][express] view engine which renders [React][react] components on server and allows mounting of components on the client. This is a fork of [express-react-views](https://github.com/reactjs/express-react-views).
 
 This is intended to be used as a replacement for existing server-side view solutions, like [jade][jade], [ejs][ejs], or [handlebars][hbs].
-
 
 ## Usage
 
 ```sh
-npm install express-react-views react
+npm install express-iso-react-views react
 ```
 
-**Note:** You must explicitly install `react` as a dependency. Starting in v0.5, `react` is a peer dependency here. This is to avoid issues that may come when using incompatible versions.
+**Note:** You must explicitly install `react` as a dependency. `react` is a peer dependency here. This is to avoid issues that may come when using incompatible versions.
 
 ### Add it to your app.
 
@@ -19,52 +18,65 @@ npm install express-react-views react
 // app.js
 
 var app = express();
-var reactViews = require('express-react-views').init({ 
-  root:path.join(__dirname, 'components'),
-  layout: 'layout',
-  mountNode:'#app'
-});
+var reactViews = require('express-iso-react-views').init();
 
 app.set('views', __dirname + '/components');
-app.set('view engine', 'js');
-app.engine('js', reactViews.engine);
+app.set('view engine', 'jsx');
+app.engine('jsx', reactViews.engine);
 app.use(reactViews.middleware);
 ```
 
-### Creating a Layout
-
-```
-//layout.js 
-
-//...
-
-  render() {
-    return (
-      <html>
-      <body>
-        <div id="app" dangerouslySetInnerHTML={{ __html:this.props.componentMarkup }}></div>
-      </body>
-      </html>
-    );
-  }
-
-//...
-```
-
 ### Options
-
-Beginning with v0.2, you can now pass options in when creating your engine.
 
 option | values | default
 -------|--------|--------
 `doctype` | any string that can be used as [a doctype](http://en.wikipedia.org/wiki/Document_type_declaration), this will be prepended to your document | `"<!DOCTYPE html>"`
 `transformViews` | `true`: use `babel` to apply JSX, ESNext transforms to views.<br>**Note:** if already using `babel/register` in your project, you should set this to `false` | `true`
-
+`includeDefaultScripts` | `true`: include React@0.13 on the client | `true`
+`includeDefaultStyles` | `true`: include normalize.css on the client | `true`
+`styles` | an array of styles to be added on the client. can be either urls or style tags | `[]`
+`scripts` | an array of scripts to be added on the client. can be either urls or full script tags | `[]`
+`html` | path to html component, relative to your views directory (see [Creating a Custom Html Component](#html-component)) | built-in
+`mountNode` | a selector describing the node to mount on the client (see [Creating a Custom Html Component](#html-component)) | `'#app'`
 The defaults are sane, but just in case you want to change something, here's how it would look:
 
 ```js
 var options = { doctype: "<!DOCTYPE html>" };
-app.engine('jsx', require('express-react-views').createEngine(options));
+var reactViews = require('express-iso-react-views').init(options);
+```
+
+#### <a name="html-component"></a> Creating a Custom Html Component
+An html component is used **server-side only** to create **static** markup to wrap your component that will be mounted client-side.  It defines a mount node for the client and sets the innerHTML of that node.
+
+The minimum required for an Html component is:
+
+```  
+// components/html.jsx
+
+var React = require('react');
+
+var Html = React.createClass({
+  render() {
+    return (
+      <html>
+      <body>
+        <div id="app" dangerouslySetInnerHTML={{ __html:this.props.viewMarkup }}></div>
+      </body>
+      </html>
+    );
+  }
+});
+
+module.exports = Html;
+```
+
+the id `app` may be changed by passing a selector as the value to the `mountNode` option:
+
+```
+var reactViews = require('express-iso-react-views').init({
+  html:'html.jsx',
+  mountNode:'.myCustomClass'
+});
 ```
 
 
@@ -103,6 +115,54 @@ exports.index = function(req, res){
   res.render('index', { name: 'John' });
 };
 ```
+
+### Layouts
+
+Simply pass the relevant props to a layout component.
+
+`components/layouts/default.jsx`:
+```js
+var React = require('react');
+
+var DefaultLayout = React.createClass({
+  render: function() {
+    return (
+      <div>
+        <header>
+          <h1>{this.props.pageTitle}</h1>
+          <nav></nav>
+        </header>
+        <div>{this.props.children}</body>
+        <footer>
+          Copyright &copy; My Awesome Company
+        </footer>
+      </div>
+    );
+  }
+});
+
+module.exports = DefaultLayout;
+```
+
+`components/index.jsx`:
+```js
+var React = require('react');
+var DefaultLayout = require('./layouts/default');
+
+var HelloMessage = React.createClass({
+  render: function() {
+    return (
+      <DefaultLayout pageTitle={this.props.pageTitle}>
+        <div>Hello {this.props.name}</div>
+      </DefaultLayout>
+    );
+  }
+});
+
+module.exports = HelloMessage;
+```
+
+**That's it!** Layouts follow really naturally from the idea of composition.
 
 ## Questions
 
