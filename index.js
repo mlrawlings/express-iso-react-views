@@ -26,7 +26,7 @@ var DEFAULT_OPTIONS = {
 }
 
 var INCLUDED_SCRIPTS = [
-  'https://fb.me/react-0.13.3.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/react/'+React.version+'/react.min.js'
 ]
 
 var INCLUDED_STYLES = [
