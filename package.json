@@ -1,6 +1,6 @@
 {
   "name": "express-iso-react-views",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "This is an Express view engine which renders React components on server and allows mounting on the client.  Based on express-react-views by Paul O’Shannessy.",
   "keywords": [
     "express",
