@@ -32,7 +32,7 @@ option | values | default
 -------|--------|--------
 `doctype` | any string that can be used as [a doctype](http://en.wikipedia.org/wiki/Document_type_declaration), this will be prepended to your document | `"<!DOCTYPE html>"`
 `transformViews` | `true`: use `babel` to apply JSX, ESNext transforms to views.<br>**Note:** if already using `babel/register` in your project, you should set this to `false` | `true`
-`includeDefaultScripts` | `true`: include React@0.13 on the client | `true`
+`includeDefaultScripts` | `true`: include React on the client. version is automatically matched to the version you have installed on the server | `true`
 `includeDefaultStyles` | `true`: include normalize.css on the client | `true`
 `styles` | an array of styles to be added on the client. can be either urls or style tags | `[]`
 `scripts` | an array of scripts to be added on the client. can be either urls or full script tags | `[]`
