@@ -25,10 +25,12 @@
     "babel-core": "5.x",
     "babel-loader": "5.x",
     "react": "0.12 - 0.13",
-    "webpack": "1.x"
+    "webpack": "1.x",
+    "webpack-dev-middlware": "1.x"
   },
   "dependencies": {
-    "object-assign": "^2.0.0"
+    "object-assign": "^2.0.0",
+    "recursive-readdir": "^1.2.1"
   },
   "devDependencies": {
     "react": "^0.13.2",

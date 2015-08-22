@@ -12,6 +12,8 @@ var assign = require('object-assign')
 var fs = require('fs')
 var path = require('path')
 var webpack = require('webpack')
+var webpackMiddleware = require("webpack-dev-middleware")
+var recursiveReadDir = require('recursive-readdir')
 
 var DEFAULT_OPTIONS = {
   doctype: '<!DOCTYPE html>',
@@ -127,60 +129,56 @@ function init(engineOptions) {
     return html.replace('</body>', scripts + '</body>')
   }
 
+  var middleware
+
   function serveComponent(req, res, next) {
-    var match
-      , filename
-      , inputFile
-      , outputPath
-      , outputFile
+    if(middleware) return middleware(req, res, next)
 
-    if(match = /^\/components\/(.+\.jsx?)/.exec(req.url)) {
-        filename = match[1]
-        inputFile = path.join(req.app.get('views'), filename)
-        outputPath = path.join(__dirname, 'components')
-        outputFile = path.join(outputPath, filename)
+    recursiveReadDir(req.app.get('views'), function(err, files) {
+      if(err) return next(err)
 
-        fs.stat(inputFile, function(err, inputStats) {
-          if(err) next(err)
-          fs.stat(outputFile, function(err, outputStats) {
-            if(err) return createAndServe()
-
-            if(inputStats.mtime > outputStats.mtime) {
-              createAndServe()
-            } else {
-              res.sendFile(outputFile)
-            }
-          })
-        })
-
-        function createAndServe() {
-          webpack({
-            entry: inputFile,
-            output: {
-              path: outputPath,
-              filename: filename,
-              publicPath: '/components/'+filename,
-              library: 'Component'
-            },
-            module: {
-              loaders:[{
-                // "test" is commonly used to match the file extension
-                test: /\.jsx?$/,
-                // the "loader"
-                loader: "babel-loader"
-              }]
-            },
-            externals: {
-              react:'React'
-            }
-          }).run(function(err, stats) {
-            if(err) next(err)
-            res.sendFile(outputFile)
-          })
+      var entry = {}
+        , fileType = new RegExp('\\.'+req.app.get('view engine')+'$', 'i')
+      
+      files.forEach(function(filename) {
+        if(fileType.test(filename)) {
+          var name = path.relative(req.app.get('views'), filename).replace(fileType, '')
+          entry[name] = [filename]
         }
-    } else {
-      return next();
-    }
+      })
+
+      middleware = webpackMiddleware(webpack({
+        entry: entry,
+        output: {
+          path: '/',
+          filename: '[name].js',
+          library: 'Component'
+        },
+        module: {
+          loaders:[{
+            test: /\.jsx?$/,
+            loader: "babel-loader"
+          }]
+        },
+        externals: {
+          react:'React'
+        }
+      }), {
+          noInfo: false,
+          quiet: false,
+          lazy: false,
+          watchOptions: {
+              aggregateTimeout: 300,
+              poll: true
+          },
+          publicPath: "/components/",
+          stats: {
+              colors: true
+          }
+      })
+
+      return middleware(req, res, next)
+    })
   }
 
   return { engine:renderFile, middleware:serveComponent };
