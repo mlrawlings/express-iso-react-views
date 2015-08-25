@@ -100,10 +100,31 @@ function init(engineOptions) {
     cb(null, markup);
   }
 
+  function clientRender(mountNode) {
+    function getMountNode() {
+      return document.querySelector(mountNode)
+    }
+
+    function getData() {
+      return JSON.parse(document.querySelector('#data').textContent, dateReviver)
+    }
+
+    function dateReviver(key, val) {
+      var reggie = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?:\:\d{2}(?:\.\d+)?)?)(Z|[+-]\d{2}:?\d{2})$/
+      if(typeof val == 'string' && reggie.test(val)) {
+        return new Date(val)
+      }
+      return val
+    }
+
+    React.render(React.createElement(Component, getData()), getMountNode())
+  }
+
   function createMountScripts(filename, props) {
     return [
       '/components/'+filename.replace(/\\/g,'/'),
-      '<script>React.render(React.createElement(Component, '+JSON.stringify(props)+'), document.querySelector(\''+engineOptions.mountNode+'\'))</script>'
+      '<script id="data" type="application/json">'+JSON.stringify(props)+'</script>',
+      '<script>;('+clientRender.toString()+')("'+engineOptions.mountNode+'");</script>'
     ]
   }
 
